@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Img Page</title>
+    <title>图片加载页面</title>
     <style>
         .container {
             display: flex;
@@ -24,22 +24,53 @@
             object-fit: cover;
         }
     </style>
+    <!-- Load TensorFlow.js. This is required -->
+    <script src="https://unpkg.com/@tensorflow/tfjs@2.6.0" type="text/javascript"></script>
+    <script src="https://unpkg.com/nsfwjs@2.3.0" type="text/javascript"></script>
 </head>
 
 <body>
     <div class="container" id="container"></div>
     <script>
-        // script.js
+        window.onload = function () {
+            // Load the model.
+            tf.setBackend("cpu"); //! https://github.com/tensorflow/tfjs/issues/1644
+            nfsw = nsfwjs.load()
+
             const container = document.getElementById('container');
 
             // 设置图片加载函数
             function loadImage(data) {
-                const image = document.createElement('div');
-                image.className = 'image';
-                const img = document.createElement('img');
-                img.src = data.imageURL;
-                image.appendChild(img);
-                container.appendChild(image);
+                nfsw.then((model) => {
+                    const img = new Image();
+                    img.crossOrigin = "anonymous";
+                    // some image here
+                    img.src = data.imageURL;
+
+                    // 不让img显示，可以将其设置为display:none
+                    img.style.display = 'none';
+
+                    img.onload = function () {
+                        // Classify the image.
+                        model.classify(img).then((predictions) => {
+                            if ((predictions[0].className === "Hentai" && predictions[0].probability > 0.5) || (predictions[0].className === "Porn" && predictions[0].probability > 0.5)) {
+                                console.log(data.imageURL);
+                                console.log("Predictions", predictions);
+                                img.remove();
+                                delete img;
+                                return;
+                            }
+                            img.remove();
+                            delete img;
+                            const image = document.createElement('div');
+                            image.className = 'image';
+                            const img2 = document.createElement('img');
+                            img2.src = data.imageURL;
+                            image.appendChild(img2);
+                            container.appendChild(image);
+                        });
+                    }
+                });
             }
 
             // 设置请求函数
@@ -63,6 +94,7 @@
 
             // 开始请求
             requestData();
+        };
     </script>
 </body>
 
